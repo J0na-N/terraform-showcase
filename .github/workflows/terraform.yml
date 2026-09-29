@@ -1,0 +1,53 @@
+name: Terraform
+
+# Root module CI. AWS deployment credentials are stored as CI secrets.
+# Plan on pull requests, apply on merge to main.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+env:
+  AWS_REGION: us-east-2
+  # Name of the Secrets Manager secret created by the bootstrap layer.
+  CONFIG_SECRET_NAME: ${{ vars.CONFIG_SECRET_NAME }}
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+
+      # Read the JSON config secret and expose each key as a TF_VAR_* env var
+      # so it overrides terraform.tfvars. Values are masked in the logs and
+      # never written to disk.
+      - name: Load config from Secrets Manager
+        if: env.CONFIG_SECRET_NAME != ''
+        run: |
+          json=$(aws secretsmanager get-secret-value \
+            --secret-id "$CONFIG_SECRET_NAME" \
+            --query SecretString --output text)
+          # Mask every value so it can't leak into subsequent step logs.
+          echo "$json" | jq -r '.[] | tostring' | while IFS= read -r v; do
+            echo "::add-mask::$v"
+          done
+          # Export each key as TF_VAR_<key> for terraform plan/apply.
+          echo "$json" | jq -r 'to_entries[] | "TF_VAR_\(.key)=\(.value)"' >> "$GITHUB_ENV"
+
+      - run: terraform fmt -check -recursive
+
+      - run: terraform init
+
+      - run: terraform validate
+
+      - run: terraform plan -input=false
+
+      - if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: terraform apply -input=false -auto-approve

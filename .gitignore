@@ -1,0 +1,16 @@
+# Local variable files
+terraform.tfvars
+
+# Terraform working directories and lock files
+.terraform*
+
+# Terraform state files are ignored by default...
+terraform.tfstate
+terraform.tfstate.*
+
+# ...EXCEPT the bootstrap layer, which uses committed local state.
+# This is the run-once layer that creates the remote-state S3 bucket and the
+# shared Secrets Manager secret. Its state must be committed so those shared
+# resources are never accidentally recreated.
+!bootstrap/terraform.tfstate
+!bootstrap/terraform.tfstate.backup
