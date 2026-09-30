@@ -1,9 +1,3 @@
-# ------------------------------------------------------------------
-# VPC module: two public + two private subnets across two AZs, a NAT
-# gateway, an internet gateway, flow logs, a locked-down default SG,
-# and a hardened default network ACL.
-# ------------------------------------------------------------------
-
 locals {
   prefix                 = "${var.nametag}-${var.environment}"
   flow-logs-traffic-type = var.environment == "prod" ? "ALL" : "REJECT"
