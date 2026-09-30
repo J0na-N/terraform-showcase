@@ -1,6 +1,6 @@
 locals {
   prefix                 = "${var.nametag}-${var.environment}"
-  flow-logs-traffic-type = var.environment == "prod" ? "ALL" : "REJECT"
+  flow-logs-traffic-type = "ALL"
 }
 
 resource "aws_vpc" "this" {
@@ -94,7 +94,7 @@ resource "aws_route_table_association" "private_route_table_association" {
 
 resource "aws_cloudwatch_log_group" "vpc_flow_logs" {
   name              = "/aws/vpc/flow-logs/${local.prefix}"
-  retention_in_days = var.environment == "prod" ? 90 : 30
+  retention_in_days = 90
 }
 
 resource "aws_iam_role" "vpc_flow_logs" {
